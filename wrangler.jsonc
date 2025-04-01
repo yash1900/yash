@@ -1,7 +1,4 @@
 {
   "name": "yash",
-  "compatibility_date": "2023-09-01",
-  "assets": {
-    "directory": "./dist"
-  }
+ "compatibility_date": "2023-09-01"
 }

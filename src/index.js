@@ -31,8 +31,9 @@ async function handleRequest(request) {
       const imagePath = url.pathname
       
       // Forward to origin (your actual storage/server)
-      // Replace this URL with wherever your images are actually stored
-      const originUrl = `https://yourappname.supabase.co/storage/v1/object/public${imagePath}`
+
+      // Update this URL to your actual Supabase URL where images are stored
+      const originUrl = `https://nzceuozudxipzmpwavmw.supabase.co/storage/v1/object/public${imagePath}`
       
       // Fetch the image from origin
       let response = await fetch(originUrl, {

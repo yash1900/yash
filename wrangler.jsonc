@@ -1,5 +1,5 @@
 {
-  "name": "yash",
+  "name": "image-handler",
   "compatibility_date": "2023-09-01",
   "main": "src/index.js"
 }

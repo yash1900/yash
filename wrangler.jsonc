@@ -1,6 +1,14 @@
-{ 
-"name": "image-handler", 
-"compatibility_date": "2023-09-01", 
-"main": "src/index.js", 
-
+{
+  "name": "image-handler",
+  "compatibility_date": "2023-09-01",
+  "main": "src/index.js",
+  "routes": [
+    {
+      "pattern": "image-handler.yashmalhotra.workers.dev/*",
+      "custom_domain": true
+    }
+  ],
+  "triggers": {
+    "crons": []
+  }
 }

@@ -65,11 +65,11 @@ async function handleRequest(request) {
       if (url.pathname.includes('/storage/v1/object/public')) {
         // It's already a Supabase URL - keep it as is
         const fullPath = url.pathname + url.search;  // Include query parameters
-        originUrl = `https://nzceuozudxipzmpwavmw.supabase.co${fullPath}`;
+        originUrl = `https://eukenximajiuhrtljnpw.supabase.co${fullPath}`;
         console.log(`Using direct Supabase URL: ${originUrl}`);
       } else {
         // Regular images path - construct the Supabase URL
-        originUrl = `https://nzceuozudxipzmpwavmw.supabase.co/storage/v1/object/public${imagePath}${url.search}`;
+        originUrl = `https://eukenximajiuhrtljnpw.supabase.co/storage/v1/object/public${imagePath}${url.search}`;
         console.log(`Constructed Supabase URL: ${originUrl}`);
       }
       

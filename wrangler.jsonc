@@ -1,14 +1,7 @@
-{
-  "name": "image-handler",
-  "compatibility_date": "2023-09-01",
-  "main": "src/index.js",
-  "routes": [
-    {
-      "pattern": "*",
-      "zone_name": "yashmalhotra.workers.dev"
-    }
-  ],
-  "triggers": {
-    "crons": []
-  }
+{ 
+"name": "image-handler", 
+"compatibility_date": "2023-09-01", 
+"main": "src/index.js", 
+"routes": [ { "pattern": "image-handler.yashmalhotra.workers.dev/*", "custom_domain": true } ], 
+"triggers": { "crons": [] } 
 }

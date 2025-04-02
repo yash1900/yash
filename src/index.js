@@ -1,6 +1,6 @@
 /**
  * Image CDN Worker
- * Handles image optimization and delivery
+ * Handles image optimization and delivery//
  */
 
 addEventListener('fetch', event => {

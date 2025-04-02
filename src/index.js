@@ -1,6 +1,6 @@
 /**
  * Image CDN Worker
- * Handles image optimization and delivery//
+ * Handles image optimization and delivery
  */
 
 addEventListener('fetch', event => {
@@ -27,6 +27,36 @@ async function handleRequest(request) {
     
     // Debug logging
     console.log(`Processing request for: ${url.pathname}${url.search}`)
+    
+    // Health check endpoint
+    if (url.pathname === '/health' || url.pathname === '/_health') {
+      // Test connection to Supabase
+      let supabaseStatus = 'unknown';
+      try {
+        const testUrl = 'https://eukenximajiuhrtljnpw.supabase.co/storage/v1/object/public/images/test.jpg';
+        const testResponse = await fetch(testUrl, { 
+          method: 'HEAD',
+          cf: { cacheTtl: 0, cacheEverything: false }
+        });
+        supabaseStatus = testResponse.ok ? 'healthy' : 'degraded';
+      } catch (error) {
+        supabaseStatus = 'unhealthy';
+        console.error('Supabase connection test failed:', error);
+      }
+
+      return new Response(JSON.stringify({
+        status: 'ok',
+        version: '1.0.0',
+        timestamp: new Date().toISOString(),
+        supabase: supabaseStatus
+      }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        }
+      });
+    }
     
     // Handle placeholder.svg specially - with fixed dimensions
     if (url.pathname.includes('placeholder.svg')) {
@@ -75,29 +105,47 @@ async function handleRequest(request) {
       
       console.log(`Forwarding request to: ${originUrl}`)
       
-      // Fetch the image from origin
-      let response
-      try {
-        response = await fetch(originUrl, {
-          cf: {
-            // Enable Cloudflare's image optimization if available
-            image: {
-              quality: 85,
-              fit: "scale-down",
+      // Fetch the image from origin with retry logic
+      let response;
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      while (attempts < maxAttempts) {
+        try {
+          response = await fetch(originUrl, {
+            cf: {
+              // Enable Cloudflare's image optimization if available
+              image: {
+                quality: 85,
+                fit: "scale-down",
+              },
+              cacheTtl: 31536000, // Cache for 1 year
+              cacheEverything: true,
             },
-            cacheTtl: 31536000, // Cache for 1 year
-            cacheEverything: true,
-          },
-          headers: request.headers,
-          method: request.method
-        })
-      } catch (fetchError) {
-        console.error(`Error fetching from origin: ${fetchError.message}`);
-        throw new Error(`Origin fetch failed: ${fetchError.message}`);
+            headers: request.headers,
+            method: request.method
+          });
+          
+          // If successful, break out of retry loop
+          if (response.ok) break;
+          
+          // If not found, no need to retry
+          if (response.status === 404) break;
+          
+        } catch (fetchError) {
+          console.error(`Attempt ${attempts + 1} failed: ${fetchError.message}`);
+        }
+        
+        // Exponential backoff before retry
+        attempts++;
+        if (attempts < maxAttempts) {
+          const backoffMs = Math.min(1000 * Math.pow(2, attempts), 5000);
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+        }
       }
       
       // If the image exists, return it with proper headers
-      if (response.ok) {
+      if (response && response.ok) {
         let newHeaders = new Headers(response.headers)
         
         // Add CORS headers
@@ -115,7 +163,8 @@ async function handleRequest(request) {
         })
       } else {
         // If image doesn't exist in origin, return the placeholder SVG
-        console.error(`Origin image not found: ${originUrl} (status: ${response.status})`);
+        const errorStatus = response ? response.status : 'No response';
+        console.error(`Origin image not found: ${originUrl} (status: ${errorStatus})`);
         const placeholderSvg = `<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
           <rect width="800" height="600" fill="#0A1A2F"/>
           <text x="50%" y="50%" font-family="Arial, sans-serif" font-size="32" text-anchor="middle" fill="#fff">Image Not Found</text>
@@ -154,13 +203,24 @@ async function handleRequest(request) {
       }
     })
   } catch (err) {
-    // Return detailed error response
+      // Return structured error response
     console.error(`Worker error: ${err.message}`);
-    return new Response(`Error: ${err.message}\n\nStack: ${err.stack || 'No stack trace available'}`, {
+      // Generate a request ID to help with debugging
+    const requestId = crypto.randomUUID();
+    
+    return new Response(JSON.stringify({
+      error: 'An error occurred processing your request',
+      requestId: requestId,
+      // Don't expose full error details in production
+      ...(process.env.NODE_ENV !== 'production' ? { 
+        message: err.message,
+        stack: err.stack 
+      } : {})
+    }), {
       status: 500,
       headers: {
         ...corsHeaders,
-        'Content-Type': 'text/plain'
+        'Content-Type': 'application/json'
       }
     })
   }

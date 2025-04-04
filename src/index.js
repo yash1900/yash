@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js/dist/module';
+import { createClient } from '@supabase/edge-js';
 
 addEventListener('fetch', event => {
   event.respondWith(handleRequest(event.request, event));

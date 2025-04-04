@@ -483,3 +483,4 @@ async function handleRequest(request) {
 // Register the fetch event handler
 addEventListener('fetch', event => {
   event.respondWith(handleRequest(event.request));
+});

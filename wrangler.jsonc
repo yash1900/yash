@@ -1,8 +1,7 @@
 {
   "name": "image-handler",
-  "main": "src/index.js",
   "compatibility_date": "2023-09-01",
-  "type": "module",
+  "main": "src/index.js",
   "triggers": {
     "crons": []
   },

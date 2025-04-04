@@ -16,14 +16,20 @@ async function handleRequest(request) {
 
   const url = new URL(request.url);
 
-  // Handle root and health check as plain messages
-  if (url.pathname === '/' || url.pathname === '/_health') {
-    return new Response('Image CDN Worker is running.', {
-      headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+  // ✅ Handle /, /_health, and /health routes
+  if (url.pathname === '/' || url.pathname === '/_health' || url.pathname === '/health') {
+    return new Response(JSON.stringify({
+      status: 'ok',
+      message: 'Image CDN Worker is running.'
+    }), {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      }
     });
   }
 
-  // Handle all /website-images/* requests through Supabase proxy
+  // ✅ Serve images from Supabase through Worker CDN
   if (url.pathname.startsWith('/website-images/')) {
     return await handleImageRequest(url, request, corsHeaders);
   }
@@ -39,7 +45,6 @@ async function handleRequest(request) {
   });
 }
 
-// 🔄 Fetch image from Supabase and handle CDN + error fallback
 async function handleImageRequest(url, request, corsHeaders) {
   const imagePath = url.pathname.replace('/website-images', '');
   const originUrl = `https://eukenximajiuhrtljnpw.supabase.co/storage/v1/object/public/website-images${imagePath}${url.search}`;
@@ -66,7 +71,6 @@ async function handleImageRequest(url, request, corsHeaders) {
   }
 }
 
-// 🛑 Retry logic for edge fetches
 async function fetchWithRetry(url, request, maxAttempts = 2) {
   let attempts = 0;
   while (attempts < maxAttempts) {
@@ -89,7 +93,6 @@ async function fetchWithRetry(url, request, maxAttempts = 2) {
   return null;
 }
 
-// 🖼 Return inline SVG placeholder
 function createDynamicPlaceholder(path, corsHeaders, status = 404, message = '') {
   const svg = `<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
     <rect width="800" height="600" fill="#0A1A2F"/>

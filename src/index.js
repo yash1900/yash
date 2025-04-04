@@ -43,7 +43,6 @@ async function handleRequest(request, event) {
     try {
       // Create Supabase client
       const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
-      );
 
       // Look up the storage path from the key
       const { data, error } = await supabase

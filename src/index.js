@@ -47,7 +47,7 @@ async function handleRequest(request) {
 
 async function handleImageRequest(url, request, corsHeaders) {
   const imagePath = url.pathname.replace('/website-images', '');
-  const originUrl = `https://eukenximajiuhrtljnpw.supabase.co/storage/v1/object/public/${imagePath}${url.search}`;
+  const originUrl = `https://eukenximajiuhrtljnpw.supabase.co/storage/v1/object/public/website-images${imagePath}${url.search}`;
 
   try {
     const response = await fetchWithRetry(originUrl, request);

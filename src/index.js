@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js/dist/module';
 
 addEventListener('fetch', event => {
   event.respondWith(handleRequest(event.request, event));
@@ -42,9 +42,7 @@ async function handleRequest(request, event) {
 
     try {
       // Create Supabase client
-      const supabase = createClient(
-        SUPABASE_URL, // <- Supplied via environment
-        SUPABASE_KEY  // <- Supplied via secret
+      const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
       );
 
       // Look up the storage path from the key

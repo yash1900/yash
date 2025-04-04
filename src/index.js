@@ -1,10 +1,8 @@
-import { createClient } from '@supabase/edge-js';
-
 addEventListener('fetch', event => {
-  event.respondWith(handleRequest(event.request, event));
+  event.respondWith(handleRequest(event.request))
 });
 
-async function handleRequest(request, event) {
+async function handleRequest(request) {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
@@ -17,10 +15,9 @@ async function handleRequest(request, event) {
   }
 
   const url = new URL(request.url);
-  const pathname = url.pathname;
 
-  // ✅ Health check
-  if (pathname === '/' || pathname === '/health' || pathname === '/_health') {
+  // ✅ Handle /, /_health, and /health routes
+  if (url.pathname === '/' || url.pathname === '/_health' || url.pathname === '/health') {
     return new Response(JSON.stringify({
       status: 'ok',
       message: 'Image CDN Worker is running.'
@@ -32,55 +29,46 @@ async function handleRequest(request, event) {
     });
   }
 
-  // ✅ Handle key-based image requests
-  if (pathname.startsWith('/website-images/')) {
-    const key = pathname.replace('/website-images/', '').replace(/\/$/, '');
-
-    if (!key) {
-      return createDynamicPlaceholder('Invalid key', corsHeaders, 400, 'Missing image key');
-    }
-
-    try {
-      // Create Supabase client
-      const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_KEY);
-
-      // Look up the storage path from the key
-      const { data, error } = await supabase
-        .from('website-images')
-        .select('storage_path')
-        .eq('key', key)
-        .single();
-
-      if (error || !data?.storage_path) {
-        return createDynamicPlaceholder(key, corsHeaders, 404, 'Image key not found');
-      }
-
-      const originUrl = `https://eukenximajiuhrtljnpw.supabase.co/storage/v1/object/public/website-images/${data.storage_path}`;
-      const response = await fetchWithRetry(originUrl, request);
-
-      if (response?.ok) {
-        const headers = new Headers(response.headers);
-        Object.entries(corsHeaders).forEach(([k, v]) => headers.set(k, v));
-        headers.set('Cache-Control', 'public, max-age=31536000');
-        headers.set('CDN-Cache', 'HIT');
-        return new Response(response.body, { status: 200, headers });
-      } else {
-        return createDynamicPlaceholder(key, corsHeaders, response?.status || 500, 'Image fetch failed');
-      }
-    } catch (err) {
-      return createDynamicPlaceholder(key, corsHeaders, 500, err.message);
-    }
+  // ✅ Serve images from Supabase through Worker CDN
+  if (url.pathname.startsWith('/website-images/')) {
+    return await handleImageRequest(url, request, corsHeaders);
   }
 
-  // ❌ Unknown route
+  // Fallback 404
   return new Response(JSON.stringify({
     error: 'Not Found',
-    path: pathname,
-    message: 'Unsupported route.'
+    path: url.pathname,
+    message: 'The requested path is not supported by this worker.',
   }), {
     status: 404,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+async function handleImageRequest(url, request, corsHeaders) {
+  const imagePath = url.pathname.replace('/website-images', '');
+  const originUrl = `https://eukenximajiuhrtljnpw.supabase.co/storage/v1/object/public/website-images${imagePath}${url.search}`;
+
+  try {
+    const response = await fetchWithRetry(originUrl, request);
+
+    if (response && response.ok) {
+      const newHeaders = new Headers(response.headers);
+      Object.entries(corsHeaders).forEach(([k, v]) => newHeaders.set(k, v));
+      newHeaders.set('Cache-Control', 'public, max-age=31536000');
+      newHeaders.set('CDN-Cache', 'HIT');
+      newHeaders.set('CDN-Provider', 'Cloudflare-Worker');
+
+      return new Response(response.body, {
+        status: response.status,
+        headers: newHeaders,
+      });
+    } else {
+      return createDynamicPlaceholder(imagePath, corsHeaders, response?.status);
+    }
+  } catch (error) {
+    return createDynamicPlaceholder(imagePath, corsHeaders, 500, error.message);
+  }
 }
 
 async function fetchWithRetry(url, request, maxAttempts = 2) {
@@ -89,9 +77,9 @@ async function fetchWithRetry(url, request, maxAttempts = 2) {
     try {
       const response = await fetch(url, {
         cf: {
-          cacheEverything: true,
+          image: { quality: 85, fit: 'scale-down' },
           cacheTtl: 31536000,
-          image: { fit: 'scale-down', quality: 85 },
+          cacheEverything: true,
         },
         headers: request.headers,
         method: request.method,
@@ -99,11 +87,9 @@ async function fetchWithRetry(url, request, maxAttempts = 2) {
 
       if (response.ok || response.status === 404) return response;
     } catch (_) {}
-
     await new Promise(r => setTimeout(r, Math.pow(2, attempts) * 300));
     attempts++;
   }
-
   return null;
 }
 
@@ -116,7 +102,7 @@ function createDynamicPlaceholder(path, corsHeaders, status = 404, message = '')
   </svg>`;
 
   return new Response(svg, {
-    status,
+    status: 200,
     headers: {
       ...corsHeaders,
       'Content-Type': 'image/svg+xml',

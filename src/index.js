@@ -9,18 +9,20 @@ addEventListener('fetch', event => {
 
 async function handleRequest(request) {
   // CORS headers for cross-origin requests
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  }
+ const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
+  'Access-Control-Allow-Headers': '*', // ← allow any header
+  'Access-Control-Max-Age': '86400'
+};
 
   // Handle OPTIONS request for CORS preflight
   if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: corsHeaders
-    })
-  }
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders
+  });
+}
 
   try {
     const url = new URL(request.url)
